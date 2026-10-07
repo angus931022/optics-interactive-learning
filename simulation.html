@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>光纖與麥克遜干涉儀互動模擬系統｜許翃銨</title>
+  <!-- 引入 Tailwind CSS 進行現代化 UI 排版 -->
+  <link rel="stylesheet" href="simulation.css">
+  <style>
+    /* 微調自定義樣式與滑桿軌跡發光質感 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1329;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .slider-thumb::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #06b6d4;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      border: 2px solid #0f172a;
+    }
+    .slider-thumb::-webkit-slider-thumb:hover {
+      background: #22d3ee;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-cyan-500 selection:text-slate-950"><nav aria-label="作品導覽" style="padding:12px 24px;background:#111827;color:white;font:14px/1.8 sans-serif"><a href="index.html" style="color:white">作品首頁</a>　｜　<a href="about.html" style="color:white">開發說明與模型範圍</a>　｜　許翃銨 · 自主學習作品<br>教學示意；條紋動畫非由光程差直接推得的定量影像。</nav>
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-pulse"></div>
+        <h1 class="text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          光纖麥克遜干涉儀（Michelson Interferometer）互動教學系統
+        </h1>
+      </div>
+      <span class="text-xs font-mono px-3 py-1 bg-slate-800 border border-slate-700 rounded-full text-slate-400">
+        泊松比形變 (ν) 與熱光極性連動引擎
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content Container (雙欄式對稱架構) -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Control Panel & Telemetry (5 Cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Panel 1: Material Selection Dropdown (材料切換選單) -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          1. 選擇光纖材料系統
+        </h2>
+        <div class="flex flex-col gap-3">
+          <select id="materialSelect" class="w-full py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 text-xs font-medium focus:outline-none focus:border-cyan-500 transition-all">
+            <option value="silica" selected>石英光纖 (Silica Fiber)</option>
+            <option value="polymer">塑膠光纖 (Polymer Fiber / PMMA)</option>
+          </select>
+        </div>
+        
+        <!-- Display dynamic constants for the active material -->
+        <div class="mt-4 grid grid-cols-2 gap-3 text-xs font-mono bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+          <div>
+            <span class="text-slate-500 block">線性熱膨脹 (α)</span>
+            <span id="const-alpha" class="text-slate-300 font-semibold">0.5 × 10⁻⁶ /°C</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">熱光效應極性</span>
+            <span id="const-dndt" class="text-slate-300 font-semibold">+11.0 × 10⁻⁶ /°C (正)</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">有效彈光常數 (Pe)</span>
+            <span id="const-pe" class="text-slate-300 font-semibold">0.22</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">帕松比 (Poisson ν)</span>
+            <span id="const-poisson" class="text-slate-300 font-semibold">0.17</span>
+          </div>
+          <div class="col-span-2 border-t border-slate-800/60 pt-2 flex justify-between items-center">
+            <span class="text-slate-500">基準折射率 (n₀):</span>
+            <span id="const-n0" class="text-slate-300 font-semibold">1.444</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Interactive Sliders (控制面板 4個滑桿) -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm flex flex-col gap-5">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+          2. 環境與結構參數調控
+        </h2>
+
+        <!-- Slider 1: Wavelength -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex justify-between text-xs font-mono">
+            <span class="text-slate-400">雷射波長 (λ)</span>
+            <span id="val-wavelength" class="text-cyan-400 font-semibold">632.8 nm</span>
+          </div>
+          <input type="range" id="waveSlider" min="400" max="700" step="0.1" value="632.8" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb">
+        </div>
+
+        <!-- Slider 2: Base Length -->
+        <div class="flex flex-col gap-1.5 border-t border-slate-800/50 pt-3">
+          <div class="flex justify-between text-xs font-mono">
+            <span class="text-sky-400 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> 光纖初始長度 (L₀)
+            </span>
+            <span id="val-length" class="text-sky-400 font-semibold">50 cm</span>
+          </div>
+          <input type="range" id="lengthSlider" min="10" max="100" step="1" value="50" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb">
+        </div>
+
+        <!-- Slider 3: Temperature Delta -->
+        <div class="flex flex-col gap-1.5 border-t border-slate-800/50 pt-3">
+          <div class="flex justify-between text-xs font-mono">
+            <span class="text-amber-400 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> 環境溫度變化 (ΔT)
+            </span>
+            <span id="val-deltaT" class="text-amber-400 font-semibold">0.0 °C</span>
+          </div>
+          <input type="range" id="tempSlider" min="-50" max="50" step="0.5" value="0" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb">
+        </div>
+
+        <!-- Slider 4: Microstrain -->
+        <div class="flex flex-col gap-1.5 border-t border-slate-800/50 pt-3">
+          <div class="flex justify-between text-xs font-mono">
+            <span class="text-emerald-400 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 軸向微應變 (ε)
+            </span>
+            <span id="val-strain" class="text-emerald-400 font-semibold">0 με</span>
+          </div>
+          <input type="range" id="strainSlider" min="-1000" max="1000" step="10" value="0" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb">
+        </div>
+      </div>
+
+      <!-- Panel 3: Real-Time Telemetry (即時數據) -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 100 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+          即時數據監控 (Telemetry)
+        </h2>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl flex flex-col gap-1">
+            <span class="text-[10px] uppercase font-semibold text-slate-500">總光程差 (OPD) 估算</span>
+            <span id="readout-opl" class="text-sm font-mono font-bold text-slate-100">0.1500 mm</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl flex flex-col gap-1">
+            <span class="text-[10px] uppercase font-semibold text-slate-500">光程改變量 (ΔOPD)</span>
+            <span id="readout-delta-opl" class="text-sm font-mono font-bold text-cyan-400">0.00 μm</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl flex flex-col gap-1">
+            <span class="text-[10px] uppercase font-semibold text-slate-500">動態長度/寬度</span>
+            <span id="readout-geom" class="text-sm font-mono font-bold text-amber-500">125.0 / 16.0 px</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl flex flex-col gap-1">
+            <span class="text-[10px] uppercase font-semibold text-slate-500">累積流動相位</span>
+            <span id="readout-phase" class="text-sm font-mono font-bold text-emerald-500">0.0 rad</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: Coherent Displays (7 Cols - 雙畫布並排與連動) -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <!-- Panel 4: Optical Path Diagram (Canvas) -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm flex flex-col">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 mb-3 flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            1. 麥克遜干涉儀即時光路示意圖 (Canvas Path)
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">滑桿物理連續連動</span>
+        </h2>
+        
+        <div class="w-full overflow-hidden flex justify-center items-center">
+          <canvas id="schematic-canvas" width="520" height="280" class="w-full max-w-[520px] h-auto bg-slate-950 rounded-xl border border-slate-800/80 shadow-inner"></canvas>
+        </div>
+      </div>
+
+      <!-- Panel 5: Fringe Pattern Simulator (Canvas) -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm flex flex-col justify-between">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 mb-3 flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            </span>
+            2. 偵測器端同心圓干涉條紋 (Fringe Pattern)
+          </span>
+          <span class="text-xs text-slate-500 font-mono" id="wavelength-label">λ = 632.8 nm</span>
+        </h2>
+
+        <div class="flex justify-center items-center py-2">
+          <div class="relative rounded-full border-4 border-slate-800/80 p-1.5 shadow-[0_0_25px_rgba(0,0,0,0.6)] bg-slate-950 flex items-center justify-center">
+            <canvas id="fringe-canvas" width="300" height="300" class="rounded-full w-[240px] h-[240px] md:w-[260px] md:h-[260px] bg-slate-950"></canvas>
+            <div class="absolute inset-0 pointer-events-none rounded-full border border-slate-800/30">
+              <div class="absolute top-1/2 left-0 w-full h-[1px] bg-slate-800/15"></div>
+              <div class="absolute left-1/2 top-0 h-full w-[1px] bg-slate-800/15"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Panel: Principles explanation -->
+  <section class="max-w-7xl w-full mx-auto p-4 lg:p-6 border-t border-slate-800 bg-slate-950">
+    <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6 lg:p-8 backdrop-blur-sm flex flex-col gap-6">
+      <h2 class="text-lg font-bold text-cyan-400 border-b border-slate-800 pb-3 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        麥克遜干涉儀：應變泊松縮合與溫控熱光極性本質
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm leading-relaxed text-slate-300">
+        <!-- Part 1: Interference Physics -->
+        <div class="flex flex-col gap-4">
+          <h3 class="font-bold text-slate-100 text-sm tracking-wide flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            1. 物理學機制：光程差與干涉調變
+          </h3>
+          <p>
+            光束在光纖纖芯中的傳播速度 v 取決於折射率 n（即 v = c/n）。在分子尺度上，折射率反映了介質受電磁波激發後的電子極化率（Polarizability）和電子雲密度。
+          </p>
+          <p>
+            麥克遜干涉儀藉由兩路相干光束在分光鏡（BS）後的往返相位干涉，能精確探測微米級的長度與波長變化。
+          </p>
+        </div>
+
+        <!-- Part 2: Materials Chemistry -->
+        <div class="flex flex-col gap-4">
+          <h3 class="font-bold text-slate-100 text-sm tracking-wide flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            2. 泊松效應與熱光效應之微觀交互作用
+          </h3>
+          <p>
+            不同材料系統對溫度與應力的巨觀響應截然不同，這與它們的化學键結及網狀結構有關：
+          </p>
+          <ul class="space-y-3">
+            <li class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/40">
+              <strong class="text-slate-100 text-xs block mb-1">■ 二氧化矽玻璃 (Silica) 與高分子 (PMMA) 受熱之對立：</strong>
+              在高溫下，二氧化矽堅固的三維無機鍵結限制了體積膨脹。其熱光係數為正（dn/dT = +11.0 × 10⁻⁶ /°C），溫度上升時折射率增加（光程變長，條紋向外擴散）。
+              相反，高分子 PMMA 受熱時鏈間自由體積劇烈膨脹，使得材料密度大幅降低，其熱光係數為負（dn/dT = −120 × 10⁻⁶ /°C，光程縮短，條紋向內收縮）。
+            </li>
+            <li class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/40">
+              <strong class="text-slate-100 text-xs block mb-1">■ 泊松比 (ν) 的材料力學連動：</strong>
+              當光纖受到拉伸（ε > 0）時，物理長度變長。橫向寬度由於泊松效應向內收縮變細。PMMA 高分子的泊松比（ν = 0.34）顯著高於 Silica（ν = 0.17），表現出更劇烈的徑向收縮形變。
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>© 2026 光電材料與物理干涉同步教學研發模組.</p>
+      <p class="font-mono text-cyan-800">Double Canvas Synchronized Animation Engine (HTML5/ES6)</p>
+    </div>
+  </footer>
+
+  <!-- Core Javascript Implementation -->
+  <script>
+    // 1. 各預設材料之微觀物理化學參數
+    const materials = {
+      silica: {
+        alpha: 0.5e-6,
+        poisson: 0.17,
+        thermalOpticFactor: 0.005, // 石英：正熱光效應方向 (連續累加係數)
+        n0: 1.444,
+        pe: 0.22,
+        descAlpha: "0.5 × 10⁻⁶ /°C",
+        descDndt: "+11.0 × 10⁻⁶ /°C (正)",
+        descPoisson: "0.17",
+        descN0: "1.444"
+      },
+      polymer: {
+        alpha: 70e-6,
+        poisson: 0.34,
+        thermalOpticFactor: -0.05, // 塑料：負熱光效應方向，條紋流動方向相反
+        n0: 1.490,
+        pe: 0.30,
+        descAlpha: "70.0 × 10⁻⁶ /°C (強膨脹)",
+        descDndt: "-120.0 × 10⁻⁶ /°C (負)",
+        descPoisson: "0.34 (高值)",
+        descN0: "1.490"
+      }
+    };
+
+    // --------------------------------------------------
+    // 2. 全域狀態（State），所有滑桿只負責修改這裡的數值
+    // --------------------------------------------------
+    const state = {
+      material: 'silica',  // 'silica' 或 'polymer'
+      wavelength: 632.8,   // nm
+      baseLength: 50,      // L0 (cm, 初始長度滑桿基準)
+      temperature: 0,      // °C (環境溫度變化量，範圍 -50 到 +50)
+      strain: 0,           // 微應變 (με, 範圍 -1000 到 +1000)
+      phaseOffset: 0,      // 用於干涉條紋流動的連續相位累積量
+      baseOPD: 0.00015     // 基準偏置 (meters)
+    };
+
+    // 動態粒子流計時
+    let animTime = 0;
+    let lastTimestamp = 0;
+
+    // 獲取 Canvas 節點及其 Context (綁定到全域變數中，防止 Reference Error)
+    const canvasPath = document.getElementById('schematic-canvas');
+    const ctxPath = canvasPath.getContext('2d');
+    
+    const canvasFringe = document.getElementById('fringe-canvas');
+    const ctxFringe = canvasFringe.getContext('2d');
+
+    // --------------------------------------------------
+    // 3. 統一的動畫渲染循環 (每秒 60 次) - 嚴格依據指定架構
+    // --------------------------------------------------
+    function animate(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const elapsed = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+
+      // 更新粒子流動時間
+      animTime += elapsed * 0.08;
+
+      // (A) 清空兩個 Canvas (使用 clearRect 徹底清空)
+      ctxPath.clearRect(0, 0, canvasPath.width, canvasPath.height);
+      ctxFringe.clearRect(0, 0, canvasFringe.width, canvasFringe.height);
+      
+      // 獲取目前選定材質常數
+      let currentAlpha = materials[state.material].alpha;
+      let currentPoisson = materials[state.material].poisson;
+      let currentThermalOpticFactor = materials[state.material].thermalOpticFactor;
+
+      // 計算連續溫度的顏色比例 (將 -50 ~ +50°C 映射到 0 ~ 1)
+      let tRatio = (state.temperature + 50) / 100; 
+      // 平滑過渡顏色：極冷(深藍) -> 室溫(正常灰) -> 極熱(鮮紅)
+      let r = Math.floor(255 * tRatio);
+      let g = Math.floor(100 * (1 - Math.abs(tRatio - 0.5) * 2) + 50);
+      let b = Math.floor(255 * (1 - tRatio));
+      let fiberColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+      
+      // 應變與溫度熱膨脹連續疊加後的「動態視覺長度與寬度」
+      let strainFactor = state.strain / 1000000; // 轉成真實應變率
+      let thermalFactor = state.temperature * currentAlpha; // 模擬熱膨脹率
+      
+      // 最終光纖長度與寬度 (基準點固定，長度向右連續平滑延伸) - 依據您指定的形變公式
+      let dynamicLength = (state.baseLength * 2.5) * (1 + strainFactor * 1000 + thermalFactor * 2000); 
+      // 最終視覺寬度 (符合泊松比形變) - 依據您指定的形變公式
+      let dynamicWidth = 16 * (1 - currentPoisson * strainFactor * 1000); 
+
+      // 限制動態幾何圖案的邊界值，防止在極端滑桿狀態下超出 Canvas 範圍
+      dynamicLength = Math.max(10, Math.min(dynamicLength, 245));
+      dynamicWidth = Math.max(2, Math.min(dynamicWidth, 50));
+      
+      // 條紋相位的連續累積 (應變或溫度變化時，條紋要連續向外流或向內縮)
+      // 塑料光纖受熱時，currentThermalOpticFactor 為負，累積方向相反，條紋反向流動！
+      const fpsNormalize = elapsed / 16.67;
+      state.phaseOffset += (strainFactor * 20 + state.temperature * currentThermalOpticFactor) * fpsNormalize; 
+
+      // 實時計算物理上的真實 OPD 改變量與總 OPD 估算（Telemetry 數據展示用）
+      const L0_meters = state.baseLength / 100; // cm 轉公尺
+      const n0 = materials[state.material].n0;
+      const pe = materials[state.material].pe;
+      const dOPL_temp = 2 * L0_meters * (n0 * currentAlpha + (state.material === 'silica' ? 11e-6 : -120e-6)) * state.temperature;
+      const dOPL_strain = 2 * L0_meters * (n0 - 0.5 * Math.pow(n0, 3) * pe) * strainFactor;
+      const totalOPD = state.baseOPD + dOPL_temp + dOPL_strain;
+
+      // 更新介面 telemetry 文字顯示
+      updateTelemetryText(dynamicLength, dynamicWidth, totalOPD, dOPL_temp + dOPL_strain, tRatio);
+
+      // (D) 執行繪圖 (將計算好的連續變數直接傳入函數中，徹底動態連動)
+      drawOpticalPath(dynamicLength, dynamicWidth, fiberColor);
+      drawFringes(state.phaseOffset, state.wavelength);
+      
+      // 繼續下一幀
+      requestAnimationFrame(animate);
+    }
+
+    // --------------------------------------------------
+    // 4. 事件監聽器 (必須全部綁定 input 事件，確保絲滑滑動)
+    // --------------------------------------------------
+    document.getElementById('waveSlider').addEventListener('input', (e) => state.wavelength = parseFloat(e.target.value));
+    document.getElementById('lengthSlider').addEventListener('input', (e) => state.baseLength = parseFloat(e.target.value));
+    document.getElementById('tempSlider').addEventListener('input', (e) => state.temperature = parseFloat(e.target.value));
+    document.getElementById('strainSlider').addEventListener('input', (e) => state.strain = parseFloat(e.target.value));
+    
+    // 監聽材料選擇選單
+    document.getElementById('materialSelect').addEventListener('change', (e) => {
+      state.material = e.target.value;
+      
+      // 動態更新展示面板的物理常數
+      const m = materials[state.material];
+      safeSetText('const-alpha', m.descAlpha);
+      safeSetText('const-dndt', m.descDndt);
+      safeSetText('const-pe', m.descPe);
+      safeSetText('const-poisson', m.descPoisson);
+      safeSetText('const-n0', m.descN0);
+
+      // 同步將微調滑桿與應變重設歸零，讓大三學生可以更直觀切換觀察
+      state.temperature = 0;
+      state.strain = 0;
+      document.getElementById('tempSlider').value = 0;
+      document.getElementById('strainSlider').value = 0;
+    });
+
+    // --------------------------------------------------
+    // 5. 繪圖函數實作 (Canvas 重繪與物理動態綁定)
+    // --------------------------------------------------
+
+    // 繪製光路圖 - 寬度直接使用傳入的 width，長度使用 length，顏色使用 color，反射鏡與光學線段坐標完全動態綁定
+    function drawOpticalPath(length, width, color) {
+      const centerY = 140;
+      const fiberStartX = 230; // 固定光纖起點 X
+      
+      // 右側反射鏡（Mirror）的 X 坐標必須設為 光纖起點 X + length (與長度完全剛性連動，無硬編碼)
+      const mirrorX = fiberStartX + length;
+
+      // 重新填入背景底色
+      ctxPath.fillStyle = '#020617'; 
+      ctxPath.fillRect(0, 0, canvasPath.width, canvasPath.height);
+
+      // 重新繪製背景網格
+      ctxPath.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+      ctxPath.lineWidth = 1;
+      for (let x = 0; x < canvasPath.width; x += 20) {
+        ctxPath.beginPath(); ctxPath.moveTo(x, 0); ctxPath.lineTo(x, canvasPath.height); ctxPath.stroke();
+      }
+      for (let y = 0; y < canvasPath.height; y += 20) {
+        ctxPath.beginPath(); ctxPath.moveTo(0, y); ctxPath.lineTo(canvasPath.width, y); ctxPath.stroke();
+      }
+
+      // 元件：雷射盒 (Laser)
+      ctxPath.fillStyle = '#0f172a';
+      ctxPath.strokeStyle = '#334155';
+      ctxPath.lineWidth = 1.5;
+      ctxPath.fillRect(15, centerY - 20, 60, 40);
+      ctxPath.strokeRect(15, centerY - 20, 60, 40);
+      ctxPath.fillStyle = '#94a3b8';
+      ctxPath.font = '10px monospace';
+      ctxPath.textAlign = 'center';
+      ctxPath.fillText('LASER', 45, centerY + 4);
+
+      // 元件：50/50 分光鏡
+      ctxPath.fillStyle = 'rgba(30, 41, 59, 0.4)';
+      ctxPath.strokeStyle = '#475569';
+      ctxPath.fillRect(170, centerY - 30, 60, 60);
+      ctxPath.strokeRect(170, centerY - 30, 60, 60);
+      ctxPath.strokeStyle = '#64748b';
+      ctxPath.lineWidth = 2;
+      ctxPath.setLineDash([3, 3]);
+      ctxPath.beginPath(); ctxPath.moveTo(170, centerY - 30); ctxPath.lineTo(230, centerY + 30); ctxPath.stroke();
+      ctxPath.setLineDash([]); 
+      ctxPath.fillStyle = '#64748b';
+      ctxPath.fillText('B.S. 50/50', 200, centerY - 38);
+
+      // 元件：參考反射鏡 M1 (固定基準路徑)
+      ctxPath.fillStyle = '#334155';
+      ctxPath.fillRect(180, 15, 40, 10);
+      ctxPath.strokeStyle = '#94a3b8';
+      ctxPath.lineWidth = 3;
+      ctxPath.beginPath(); ctxPath.moveTo(180, 25); ctxPath.lineTo(220, 25); ctxPath.stroke();
+      ctxPath.fillStyle = '#64748b';
+      ctxPath.font = '9px monospace';
+      ctxPath.fillText('Ref M1', 200, 10);
+
+      // 元件：接收器 (Detector)
+      ctxPath.fillStyle = '#0f172a';
+      ctxPath.strokeStyle = '#334155';
+      ctxPath.fillRect(185, 230, 30, 15);
+      ctxPath.strokeRect(185, 230, 30, 15);
+      ctxPath.fillStyle = '#f43f5e';
+      ctxPath.fillText('DETECTOR', 200, 260);
+
+      // --- [共軸光纖波導包層與纖芯繪製 (拉伸時橫向收縮，PMMA 收縮幅度是 Silica 的 2 倍)] ---
+      // A. 包層 (Cladding): 與核心連動
+      const claddingWidth = width * 2.2;
+      ctxPath.fillStyle = 'rgba(71, 85, 105, 0.2)';
+      ctxPath.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+      ctxPath.lineWidth = 1.5;
+      ctxPath.fillRect(fiberStartX, centerY - claddingWidth / 2, length, claddingWidth);
+      ctxPath.strokeRect(fiberStartX, centerY - claddingWidth / 2, length, claddingWidth);
+
+      // B. 纖芯 (Core) - 長度使用 length，高度使用 width，填色使用動態連續 color
+      ctxPath.fillStyle = color;
+      ctxPath.strokeStyle = color.replace(/[\d.]+\)$/, '0.9)'); 
+      ctxPath.lineWidth = 1;
+      ctxPath.fillRect(fiberStartX, centerY - width / 2, length, width);
+      ctxPath.strokeRect(fiberStartX, centerY - width / 2, length, width);
+
+      // --- [反射鏡 M2 連動坐標 (X 坐標綁定在 光纖起點 230 + length 上)] ---
+      ctxPath.fillStyle = '#334155';
+      ctxPath.fillRect(mirrorX + 3, centerY - 15, 8, 30);
+      ctxPath.strokeStyle = '#94a3b8';
+      ctxPath.lineWidth = 3;
+      ctxPath.beginPath(); 
+      ctxPath.moveTo(mirrorX, centerY - 15); 
+      ctxPath.lineTo(mirrorX, centerY + 15); 
+      ctxPath.stroke(); 
+      ctxPath.fillStyle = '#64748b';
+      ctxPath.font = '9px monospace';
+      ctxPath.fillText('Sensor M2', mirrorX + 8, centerY - 25);
+
+      // 獲取與雷射波長對應的真實物理顏色
+      const laserColor = getLaserColor(state.wavelength, 1.0);
+
+      // --- [動態雷射光路與粒子流 (射向鏡子的光線起止點精準黏在 mirrorX 上)] ---
+      // 雷射 -> B.S. (75 -> 170)
+      drawFlowingBeam(ctxPath, 75, centerY, 170, centerY, laserColor, animTime);
+      // B.S. -> M1
+      drawFlowingBeam(ctxPath, 200, centerY, 200, 45, laserColor, animTime);
+      // M1 -> B.S.
+      drawFlowingBeam(ctxPath, 200, 45, 200, centerY, laserColor, animTime + 25);
+      
+      // B.S. -> 光纖起點 (200 -> fiberStartX)
+      drawFlowingBeam(ctxPath, 200, centerY, fiberStartX, centerY, laserColor, animTime);
+      
+      // 光纖纖芯內傳播 (雷射光束終點完全連動至 mirrorX，與 M2 鏡面保持相切)
+      drawFlowingBeam(ctxPath, fiberStartX, centerY, mirrorX, centerY, laserColor, animTime + 30);
+      
+      // M2 -> B.S. (回程雷射光，起點完全連動至 mirrorX)
+      drawFlowingBeam(ctxPath, mirrorX, centerY, 200, centerY, laserColor, animTime + 75);
+      
+      // 合束雷射 -> Detector
+      drawFlowingBeam(ctxPath, 200, centerY, 200, 230, laserColor, animTime + 10);
+    }
+
+    // 繪製粒子流動光束 (Flowing Beam)
+    function drawFlowingBeam(ctx, x1, y1, x2, y2, color, timeOffset) {
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = color;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0; 
+
+      ctx.fillStyle = '#ffffff';
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const ux = dx / length;
+      const uy = dy / length;
+
+      const spacing = 35; 
+      const speed = 1.0;  
+      const startOffset = (timeOffset * speed) % spacing;
+
+      for (let d = startOffset; d < length; d += spacing) {
+        const px = x1 + ux * d;
+        const py = y1 + uy * d;
+        ctx.beginPath();
+        ctx.arc(px, py, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 繪製偵測器端同心圓干涉條紋 (包含傳入的 phase 相位)
+    function drawFringes(phase, lambda) {
+      const cx = canvasFringe.width / 2;
+      const cy = canvasFringe.height / 2;
+      const rMax = Math.sqrt(cx * cx + cy * cy);
+      const grad = ctxFringe.createRadialGradient(cx, cy, 0, cx, cy, rMax);
+      
+      const steps = 100;
+      // 依據波長 lambda 改變同心圓條紋的間距密度
+      const baseDensity = 16000 / lambda; 
+      for (let i = 0; i <= steps; i++) {
+        const u = i / steps;
+        
+        // 核心同心圓半徑公式包含傳入的 phase 相位
+        const currentPhase = phase + baseDensity * (1 - 1.5 * u * u);
+        const intensity = 0.5 + 0.5 * Math.cos(currentPhase);
+        
+        const color = getLaserColor(lambda, intensity);
+        grad.addColorStop(u, color);
+      }
+      
+      ctxFringe.fillStyle = grad;
+      ctxFringe.fillRect(0, 0, canvasFringe.width, canvasFringe.height);
+    }
+
+    // 防禦性 DOM 安全設定函數 (徹底杜絕任何 document.getElementById 找不到元素時的拋出錯誤崩潰)
+    function safeSetText(id, value) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.innerText = value;
+      }
+    }
+
+    // 更新 Telemetry 數據顯示文字面板 (安全讀寫，無任何 null-pointer 錯誤)
+    function updateTelemetryText(length, width, totalOPD, deltaOPD, ratio) {
+      safeSetText('readout-opl', (totalOPD * 1000).toFixed(4) + ' mm');
+      safeSetText('readout-delta-opl', (deltaOPD * 1e6).toFixed(2) + ' μm');
+      safeSetText('readout-geom', `${length.toFixed(1)} / ${width.toFixed(1)} px`);
+      safeSetText('readout-phase', state.phaseOffset.toFixed(2) + ' rad');
+      safeSetText('readout-ratio', ratio.toFixed(2));
+      
+      safeSetText('val-wavelength', `${state.wavelength.toFixed(1)} nm`);
+      safeSetText('val-length', `${state.baseLength.toFixed(0)} cm`);
+      safeSetText('val-deltaT', `${state.temperature.toFixed(1)} °C`);
+      safeSetText('val-strain', `${state.strain.toFixed(0)} με`);
+      
+      const waveLabel = document.getElementById('wavelength-label');
+      if (waveLabel) {
+        waveLabel.innerText = `λ = ${state.wavelength.toFixed(1)} nm`;
+      }
+    }
+
+    // 輔助函數：雷射波長色譜模擬
+    function getLaserColor(wavelength, intensity) {
+      let r = 0, g = 0, b = 0;
+      
+      if (wavelength >= 380 && wavelength < 440) {
+        r = -(wavelength - 440) / (440 - 380);
+        b = 1.0;
+      } else if (wavelength >= 440 && wavelength < 490) {
+        g = (wavelength - 440) / (490 - 440);
+        b = 1.0;
+      } else if (wavelength >= 490 && wavelength < 510) {
+        g = 1.0;
+        b = -(wavelength - 510) / (510 - 490);
+      } else if (wavelength >= 510 && wavelength < 580) {
+        r = (wavelength - 510) / (580 - 510);
+        g = 1.0;
+      } else if (wavelength >= 580 && wavelength < 645) {
+        r = 1.0;
+        g = -(wavelength - 645) / (645 - 580);
+      } else if (wavelength >= 645 && wavelength <= 800) {
+        r = 1.0;
+      }
+
+      // UV / IR 視覺強度邊緣衰減
+      let factor = 1.0;
+      if (wavelength >= 380 && wavelength < 420) {
+        factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+      } else if (wavelength > 650 && wavelength <= 800) {
+        factor = 0.3 + 0.7 * (800 - wavelength) / (800 - 650);
+      }
+
+      r = Math.round(r * intensity * factor * 255);
+      g = Math.round(g * intensity * factor * 255);
+      b = Math.round(b * intensity * factor * 255);
+      
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    // 歸零復位
+    function resetSliders() {
+      state.baseLength = 50;
+      state.temperature = 0;
+      state.strain = 0;
+      
+      const lengthS = document.getElementById('lengthSlider'); if (lengthS) lengthS.value = 50;
+      const tempS = document.getElementById('tempSlider'); if (tempS) tempS.value = 0;
+      const strainS = document.getElementById('strainSlider'); if (strainS) strainS.value = 0;
+    }
+
+    // 啟動主循環
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
