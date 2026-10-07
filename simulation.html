@@ -270,7 +270,7 @@
   <!-- Footer -->
   <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-      <p>© 2026 光電材料與物理干涉同步教學研發模組.</p>
+      <p>© 2026 許翃銨 · 自主學習與跨域實作。</p>
       <p class="font-mono text-cyan-800">Double Canvas Synchronized Animation Engine (HTML5/ES6)</p>
     </div>
   </footer>
@@ -408,7 +408,7 @@
       const m = materials[state.material];
       safeSetText('const-alpha', m.descAlpha);
       safeSetText('const-dndt', m.descDndt);
-      safeSetText('const-pe', m.descPe);
+      safeSetText('const-pe', m.pe.toFixed(2));
       safeSetText('const-poisson', m.descPoisson);
       safeSetText('const-n0', m.descN0);
 
